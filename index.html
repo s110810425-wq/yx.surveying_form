@@ -411,6 +411,106 @@
             color: #7b5b00;
         }
 
+        /* 每道需求問題下方的業主文字回覆欄位 */
+        .note-question-block {
+            margin: 10px 0 14px;
+            padding: 0 3px;
+        }
+
+        .note-answer-label {
+            display: block;
+            margin: 7px 0 5px 5px;
+            color: #6a5e00;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .note-answer-input {
+            display: block;
+            width: 100%;
+            min-height: 64px;
+            padding: 8px 10px;
+            border: 1px solid #d5c665;
+            border-radius: 7px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.82);
+            color: #37320a;
+            font: inherit;
+            font-size: 13px;
+            line-height: 1.55;
+            resize: vertical;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .note-answer-input::placeholder {
+            color: #a39a5b;
+        }
+
+        .note-answer-input:focus {
+            border-color: #9d8b16;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(157, 139, 22, 0.14);
+        }
+
+        .note-answer-input.is-locked,
+        .note-answer-input.is-locked:focus {
+            background: rgba(237, 232, 197, 0.72);
+            border-color: #a99b47;
+            color: #514b24;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .note-answer-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 6px 0 0 2px;
+        }
+
+        .note-answer-lock-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 9px;
+            border: 1px solid #b6a52c;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.62);
+            color: #625800;
+            font-family: inherit;
+            font-size: 12px;
+            line-height: 1.3;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .note-answer-lock-btn:hover {
+            background: #fffdf0;
+        }
+
+        .note-answer-lock-btn.is-locked {
+            border-color: #81906a;
+            background: #e5ecd9;
+            color: #37512a;
+        }
+
+        .note-answer-lock-btn.is-locked:hover {
+            background: #f0f5e9;
+        }
+
+        .note-answer-lock-status {
+            color: #756c2d;
+            font-size: 11px;
+            line-height: 1.4;
+            text-align: right;
+        }
+
+        .note-answer-lock-status.is-locked {
+            color: #37512a;
+            font-weight: 700;
+        }
+
         .note-footer {
             flex: 0 0 auto;
             display: flex;
@@ -520,7 +620,7 @@
             <p class="subtitle">直立互動式動態圖譜</p>
 
             <div class="instruction">
-                💡 提示：點擊節點【收合/展開】，支援滑鼠拖曳漫遊；需求釐清啟用時，可複選最末端工項，需求問題會自動整理到右側便條紙。
+                💡 提示：點擊節點【收合/展開】，支援滑鼠拖曳漫遊；需求釐清啟用時，可複選最末端工項，並可在右側便條紙逐題填寫業主回覆。
             </div>
         </div>
 
@@ -1691,73 +1791,99 @@
             ]
         };
 		
-		// =========================================================
-		// 串接 Google 試算表送出邏輯
-		// =========================================================
-		const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm7yp2ZSmXZx0oWb-MiUdyPMkli2rWTCybKyOQN_2TilOK0aNx2KKNcC1X8Xd-XzFCBg/exec'; // <-- 請替換為您的 GAS 網址
+        // =========================================================
+        // 串接 Google 試算表送出邏輯
+        // 注意：後端 Apps Script 需同步更新，才能將每一道問題寫入「需求問答明細」工作表。
+        // =========================================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm7yp2ZSmXZx0oWb-MiUdyPMkli2rWTCybKyOQN_2TilOK0aNx2KKNcC1X8Xd-XzFCBg/exec';
 
-		document.getElementById('submitToSheetBtn').addEventListener('click', async function() {
-			const submitBtn = this;
-			
-			// 收集表單欄位資料
-			const companyName = document.getElementById('companyName').value.trim();
-			const contactPerson = document.getElementById('contactPerson').value.trim();
-			const phoneNumber = document.getElementById('phoneNumber').value.trim();
-			const emailAddress = document.getElementById('emailAddress').value.trim();
-			
-			const docYes = document.getElementById('documentsYes').checked;
-			const docNo = document.getElementById('documentsNo').checked;
-			const documentsProvided = docYes ? '有' : (docNo ? '無' : '未選擇');
+        document.getElementById('submitToSheetBtn').addEventListener('click', async function() {
+            const submitBtn = this;
 
-			// 收集右側便條紙目前已勾選的測量需求工項名稱
-			const selectedTaskNames = selectedRequirementIds.map(id => {
-				const item = requirementQuestionMap[id];
-				return item ? `${item.category} > ${item.subcategory} > ${item.name}` : id;
-			});
+            const companyName = document.getElementById('companyName').value.trim();
+            const contactPerson = document.getElementById('contactPerson').value.trim();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const emailAddress = document.getElementById('emailAddress').value.trim();
+            const docYes = document.getElementById('documentsYes').checked;
+            const docNo = document.getElementById('documentsNo').checked;
+            const documentsProvided = docYes ? '有' : (docNo ? '無' : '未選擇');
 
-			if (selectedTaskNames.length === 0) {
-				alert('請先在樹狀圖中點選需要釐清的測量工項！');
-				return;
-			}
+            const sortedSelectedIds = selectedRequirementIds
+                .filter(id => !!requirementQuestionMap[id])
+                .slice()
+                .sort((a, b) => requirementQuestionMap[a].order - requirementQuestionMap[b].order);
 
-			if (!contactPerson && !phoneNumber && !emailAddress) {
-				alert('請至少填寫聯絡人、電話或電子郵件，以便後續回覆！');
-				return;
-			}
+            if (sortedSelectedIds.length === 0) {
+                alert('請先在樹狀圖中點選需要釐清的測量工項！');
+                return;
+            }
 
-			submitBtn.disabled = true;
-			submitBtn.textContent = '傳送中...';
+            if (!contactPerson && !phoneNumber && !emailAddress) {
+                alert('請至少填寫聯絡人、電話或電子郵件，以便後續回覆！');
+                return;
+            }
 
-			try {
-				const formData = new FormData();
-				formData.append('companyName', companyName);
-				formData.append('contactPerson', contactPerson);
-				formData.append('phoneNumber', phoneNumber);
-				formData.append('emailAddress', emailAddress);
-				formData.append('documentsProvided', documentsProvided);
-				formData.append('selectedRequirements', selectedTaskNames.join('；\n'));
+            // G 欄保留為「所選工項摘要」；逐題問題與回答會另外傳至需求問答明細工作表。
+            const selectedRequirementsText = sortedSelectedIds.map(id => {
+                const item = requirementQuestionMap[id];
+                return `${item.category} > ${item.subcategory} > ${item.name}`;
+            }).join('\n');
 
-				const response = await fetch(SCRIPT_URL, {
-					method: 'POST',
-					body: formData
-				});
+            const questionDetails = [];
+            sortedSelectedIds.forEach(id => {
+                const item = requirementQuestionMap[id];
+                (item.questions || []).forEach((question, questionIndex) => {
+                    const answerKey = getRequirementAnswerKey(id, questionIndex);
+                    questionDetails.push({
+                        taskId: id,
+                        category: item.category || '',
+                        subcategory: item.subcategory || '',
+                        taskName: item.name || '',
+                        questionCode: String(question.label || `Q${questionIndex + 1}`).replace(/[.。]$/, ''),
+                        questionText: String(question.text || ''),
+                        answer: requirementAnswers[answerKey] || '',
+                        answerLocked: !!requirementAnswerLocks[answerKey]
+                    });
+                });
+            });
 
-				const result = await response.json();
+            submitBtn.disabled = true;
+            submitBtn.textContent = '傳送中...';
 
-				if (result.status === 'success') {
-					alert('🎉 測量需求與表單資料已成功送出至 Google 試算表！');
-					// 可依需求決定是否清空或保留
-				} else {
-					throw new Error(result.message || '未知錯誤');
-				}
-			} catch (error) {
-				console.error('送出失敗:', error);
-				alert('❌ 傳送失敗，請檢查網路連線或稍後再試。');
-			} finally {
-				submitBtn.disabled = false;
-				submitBtn.textContent = '確認送出表單';
-			}
-		});
+            try {
+                // 使用 URLSearchParams 送出 application/x-www-form-urlencoded，讓 Apps Script 的 e.parameter 可穩定讀取。
+                const formData = new URLSearchParams();
+                formData.append('companyName', companyName);
+                formData.append('contactPerson', contactPerson);
+                formData.append('phoneNumber', phoneNumber);
+                formData.append('emailAddress', emailAddress);
+                formData.append('documentsProvided', documentsProvided);
+                formData.append('selectedRequirements', selectedRequirementsText);
+                formData.append('questionDetails', JSON.stringify(questionDetails));
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`伺服器回應 HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert(`🎉 表單已成功送出！\n提交編號：${result.submissionId || '已建立'}\n逐題紀錄：${questionDetails.length} 題`);
+                } else {
+                    throw new Error(result.message || '未知錯誤');
+                }
+            } catch (error) {
+                console.error('送出失敗:', error);
+                alert('❌ 傳送失敗，請檢查 Google Apps Script 是否已更新並重新部署。\n詳細資訊：' + (error.message || '未知錯誤'));
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '確認送出表單';
+            }
+        });
 
         // 依 Excel 工項清單的列序，將 41 個末端節點綁定唯一 ID。
         // 這可讓原本尚未設定需求問題 ID 的工項也能被選取，並依來源順序排序。
@@ -1830,6 +1956,13 @@
         // =========================================================
         var requirementMode = true;
         var selectedRequirementIds = [];
+        // 回覆與鎖定狀態均以「工項 ID + 題目序號」儲存；切換工項重繪便條紙時不會遺失。
+        var requirementAnswers = {};
+        var requirementAnswerLocks = {};
+
+        function getRequirementAnswerKey(id, questionIndex) {
+            return String(id) + '__Q' + String(questionIndex + 1);
+        }
 
         var requirementToggleBtn = document.getElementById('requirementToggleBtn');
         var notePanel = document.getElementById('notePanel');
@@ -1950,10 +2083,40 @@
                         </div>
                 `;
 
-                item.questions.forEach(function (question) {
+                item.questions.forEach(function (question, questionIndex) {
                     var textHtml = escapeHtml(question.text).replace(/\r?\n/g, '<br>');
-                    html += '<div class="note-question"><code>' + escapeHtml(question.label) +
-                        '</code> ' + textHtml + '</div>';
+                    var answerKey = getRequirementAnswerKey(id, questionIndex);
+                    var savedAnswer = requirementAnswers[answerKey] || '';
+                    var isLocked = !!requirementAnswerLocks[answerKey];
+                    var lockButtonClass = isLocked ? 'note-answer-lock-btn is-locked' : 'note-answer-lock-btn';
+                    var textareaClass = isLocked ? 'note-answer-input is-locked' : 'note-answer-input';
+                    var lockButtonText = isLocked ? '🔓 解除鎖定' : '🔒 鎖定內容';
+                    var lockStatusText = isLocked ? '已鎖定，避免誤改' : '尚未鎖定';
+                    html += `
+                        <div class="note-question-block">
+                            <div class="note-question"><code>${escapeHtml(question.label)}</code> ${textHtml}</div>
+                            <label class="note-answer-label" for="answer-${escapeHtml(answerKey)}">業主回覆</label>
+                            <textarea
+                                id="answer-${escapeHtml(answerKey)}"
+                                class="${textareaClass}"
+                                data-answer-key="${escapeHtml(answerKey)}"
+                                rows="2"
+                                placeholder="請輸入業主回覆（可留白）"
+                                aria-label="${escapeHtml(question.label)} 業主回覆"
+                                ${isLocked ? 'readonly aria-readonly="true"' : ''}
+                            >${escapeHtml(savedAnswer)}</textarea>
+                            <div class="note-answer-actions">
+                                <button
+                                    type="button"
+                                    class="${lockButtonClass}"
+                                    data-lock-answer-key="${escapeHtml(answerKey)}"
+                                    aria-pressed="${String(isLocked)}"
+                                    title="${isLocked ? '解除鎖定後才能編輯' : '鎖定後可避免不小心更改文字'}"
+                                >${lockButtonText}</button>
+                                <span class="note-answer-lock-status ${isLocked ? 'is-locked' : ''}">${lockStatusText}</span>
+                            </div>
+                        </div>
+                    `;
                 });
 
                 html += '</section>';
@@ -1986,6 +2149,18 @@
         }
 
         function clearAllRequirements() {
+            var hasAnswers = Object.keys(requirementAnswers).some(function (key) {
+                return String(requirementAnswers[key] || '').trim() !== '';
+            });
+            var hasLocks = Object.keys(requirementAnswerLocks).some(function (key) {
+                return !!requirementAnswerLocks[key];
+            });
+
+            if ((selectedRequirementIds.length > 0 || hasAnswers || hasLocks) &&
+                !window.confirm('確定要清除所有已選工項、業主回覆及鎖定狀態嗎？此操作無法復原。')) {
+                return;
+            }
+
             selectedRequirementIds.forEach(function (id) {
                 if (Object.prototype.hasOwnProperty.call(selectedDataIndexMap, id)) {
                     applyNodeSelection(selectedDataIndexMap[id], false);
@@ -1994,15 +2169,46 @@
 
             selectedDataIndexMap = {};
             selectedRequirementIds = [];
+            requirementAnswers = {};
+            requirementAnswerLocks = {};
             renderNotePanel();
             updateChartSelectionStyle();
         }
 
-        noteBody.addEventListener('click', function (event) {
-            var button = event.target.closest('.remove-item-btn');
-            if (!button) return;
+        // 使用事件委派即時保存每一題的輸入，避免新增／移除工項導致便條紙重繪時清空內容。
+        noteBody.addEventListener('input', function (event) {
+            var textarea = event.target.closest('.note-answer-input');
+            if (!textarea) return;
 
-            var id = button.getAttribute('data-remove-id');
+            var answerKey = textarea.getAttribute('data-answer-key');
+            if (answerKey) {
+                requirementAnswers[answerKey] = textarea.value;
+            }
+        });
+
+        noteBody.addEventListener('click', function (event) {
+            var lockButton = event.target.closest('.note-answer-lock-btn');
+            if (lockButton) {
+                var answerKey = lockButton.getAttribute('data-lock-answer-key');
+                if (!answerKey) return;
+
+                if (requirementAnswerLocks[answerKey]) {
+                    if (!window.confirm('此回答目前已鎖定。確定要解除鎖定並允許編輯嗎？')) {
+                        return;
+                    }
+                    requirementAnswerLocks[answerKey] = false;
+                } else {
+                    requirementAnswerLocks[answerKey] = true;
+                }
+
+                renderNotePanel();
+                return;
+            }
+
+            var removeButton = event.target.closest('.remove-item-btn');
+            if (!removeButton) return;
+
+            var id = removeButton.getAttribute('data-remove-id');
             if (id) {
                 removeRequirement(id);
             }
