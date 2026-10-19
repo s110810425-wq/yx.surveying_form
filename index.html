@@ -20,13 +20,16 @@
             --note-gap: 22px;
         }
 
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f4f7fa;
-            color: #333;
-            margin: 0;
-            padding: 18px 20px 28px;
-        }
+		body {
+			font-family: 'Noto Sans TC', sans-serif;
+			background-color: #f4f7fa;
+			color: #333;
+			margin: 0;
+			padding: 18px 20px 28px;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+			text-rendering: optimizeLegibility;
+		}
 
         /* 主工作區預留右側便條紙空間，表單與樹狀圖不會被覆蓋 */
         #mainWorkspace {
@@ -684,11 +687,12 @@
         aria-pressed="true">📝</button>
 
     <script>
-        var dom = document.getElementById('tree-container');
-        var myChart = echarts.init(dom, null, {
-            renderer: 'canvas',
-            useDirtyRect: false
-        });
+		var dom = document.getElementById('tree-container');
+		var myChart = echarts.init(dom, null, {
+			renderer: 'canvas',
+			useDirtyRect: false,
+			devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2) // 強制以高解析度渲染文字
+		});
 
         // =========================================================
         // 需求問題資料：以唯一 ID 綁定末端節點，避免重複名稱互相誤選
