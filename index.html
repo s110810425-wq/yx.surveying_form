@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式直立樹狀圖 - 空間測量業務架構</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --note-width: 360px;
+            --note-gap: 22px;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            margin: 0;
+            padding: 18px 20px 28px;
+        }
+
+        /* 主工作區預留右側便條紙空間，表單與樹狀圖不會被覆蓋 */
+        #mainWorkspace {
+            width: calc(100% - var(--note-width) - var(--note-gap));
+            min-width: 0;
+            max-width: 1920px;
+        }
+
+        .header-container {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #003366;
+            margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        p.subtitle {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 0;
+        }
+
+        .instruction {
+            background-color: #eaf2f8;
+            color: #0055A4;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            display: inline-block;
+            margin-bottom: 10px;
+            border: 1px solid #d4e6f1;
+        }
+
+        /* 業主資料表單 */
+        .client-form {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(150px, 0.9fr);
+            gap: 12px;
+            width: 100%;
+            margin: 14px 0 16px;
+            padding: 15px;
+            background: #ffffff;
+            border: 1px solid #dce5ee;
+            border-radius: 12px;
+            box-shadow: 0 5px 18px rgba(0, 51, 102, 0.05);
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .form-field > label,
+        .form-field .field-title {
+            color: #34495e;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .form-field input[type="text"],
+        .form-field input[type="tel"],
+        .form-field input[type="email"] {
+            width: 100%;
+            min-width: 0;
+            height: 40px;
+            padding: 8px 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            outline: none;
+            background: #fbfdff;
+            color: #263746;
+            font: inherit;
+            font-size: 14px;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .form-field input:focus {
+            border-color: #3685c5;
+            box-shadow: 0 0 0 3px rgba(54, 133, 197, 0.13);
+            background: #ffffff;
+        }
+
+        .form-field input::placeholder {
+            color: #9aa5b1;
+            opacity: 1;
+        }
+
+        .document-options {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-height: 40px;
+            padding: 0 2px;
+        }
+
+        .document-options label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #34495e;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .document-options input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            accent-color: #0055A4;
+            cursor: pointer;
+        }
+
+        /* 左下角方形切換鈕：停用／啟用需求釐清與右側便條紙 */
+        #requirementToggleBtn {
+            position: fixed;
+            z-index: 1200;
+            left: 18px;
+            bottom: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            padding: 0;
+            border: 1px solid #004681;
+            border-radius: 10px;
+            background: #0055A4;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 25px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 5px 16px rgba(0, 51, 102, 0.24);
+            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #requirementToggleBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 51, 102, 0.28);
+        }
+
+        #requirementToggleBtn.active {
+            background: #d97706;
+            border-color: #b96500;
+        }
+
+        #requirementToggleBtn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 10px);
+            bottom: 50%;
+            transform: translateY(50%);
+            width: max-content;
+            max-width: 240px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(34, 45, 58, 0.96);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.4;
+            letter-spacing: 0;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+
+        #requirementToggleBtn:hover::after,
+        #requirementToggleBtn:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-wrapper {
+            width: 100%;
+            max-width: 1920px;
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 51, 102, 0.06);
+            background-color: #ffffff;
+            position: relative;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar {
+            height: 10px;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-thumb {
+            background: #0055A4;
+            border-radius: 10px;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #003366;
+        }
+
+        #tree-container {
+            width: 3600px;
+            height: 80vh;
+            min-height: 680px;
+        }
+
+        /* 右側長條便條紙：固定於視窗，不可拖曳或縮放 */
+        #notePanel {
+            position: fixed;
+            z-index: 999;
+            top: 16px;
+            right: 16px;
+            bottom: 16px;
+            width: var(--note-width);
+            min-width: 0;
+            min-height: 0;
+            max-width: calc(100vw - 32px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: #fff8a8;
+            border: 1px solid #d8c85a;
+            border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(72, 63, 0, 0.18);
+        }
+
+        #notePanel.hidden {
+            display: none;
+        }
+
+        .note-header {
+            flex: 0 0 auto;
+            padding: 14px 16px 12px;
+            user-select: none;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,0.25) 25%, transparent 25%) -12px 0/24px 24px,
+                #f4e778;
+            border-bottom: 1px dashed #c4b440;
+            position: relative;
+        }
+
+        .note-header::before {
+            content: "";
+            position: absolute;
+            width: 86px;
+            height: 18px;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-2deg);
+            background: rgba(255, 240, 160, 0.8);
+            border: 1px solid rgba(190, 170, 70, 0.35);
+        }
+
+        .note-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .note-title {
+            margin: 0;
+            color: #594f00;
+            font-size: 21px;
+            font-weight: 700;
+        }
+
+        .note-counter {
+            font-size: 15px;
+            color: #6a5e00;
+            white-space: nowrap;
+        }
+
+        .note-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 12px 14px 14px;
+        }
+
+        .note-empty {
+            padding: 30px 14px;
+            text-align: center;
+            color: #776f2c;
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .note-group {
+            margin-bottom: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.42);
+            border: 1px solid rgba(180, 166, 70, 0.45);
+            border-radius: 8px;
+        }
+
+        .note-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .note-category-heading {
+            margin: 4px 0 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.45;
+            box-shadow: 0 2px 5px rgba(72, 63, 0, 0.10);
+        }
+
+        .note-category-heading.cat-a { background: #0077b6; }
+        .note-category-heading.cat-b { background: #d96549; }
+        .note-category-heading.cat-c { background: #238a7e; }
+        .note-category-heading.cat-d { background: #7D3C98; }
+
+        .note-subcategory-heading {
+            margin: 10px 3px 6px;
+            padding: 4px 7px;
+            border-left: 3px solid #c4b440;
+            border-radius: 0 4px 4px 0;
+            background: rgba(255, 255, 255, 0.25);
+            color: #594f00;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .note-group-title {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            color: #4a4300;
+            font-weight: 700;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .remove-item-btn {
+            flex: 0 0 auto;
+            border: none;
+            background: transparent;
+            color: #8c7d00;
+            cursor: pointer;
+            font-size: 17px;
+            line-height: 1;
+            padding: 1px 3px;
+        }
+
+        .remove-item-btn:hover {
+            color: #b42318;
+        }
+
+        .note-question {
+            margin: 7px 0 0 4px;
+            padding-left: 5px;
+            color: #4c470b;
+            font-size: 15px;
+            line-height: 1.75;
+            overflow-wrap: anywhere;
+        }
+
+        .note-question code {
+            font-family: 'Noto Sans TC', sans-serif;
+            font-weight: 700;
+            color: #7b5b00;
+        }
+
+        .note-footer {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 9px 12px 11px;
+            border-top: 1px dashed #c4b440;
+            background: rgba(255, 247, 170, 0.78);
+        }
+
+        .note-clear-btn {
+            border: 1px solid #b6a52c;
+            background: rgba(255,255,255,0.5);
+            color: #625800;
+            border-radius: 8px;
+            padding: 7px 11px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .note-clear-btn:hover {
+            background: #fffdf0;
+        }
+
+        @media (max-width: 1200px) {
+            :root {
+                --note-width: 320px;
+                --note-gap: 18px;
+            }
+
+            .client-form {
+                grid-template-columns: repeat(3, minmax(130px, 1fr));
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .client-form {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .document-field {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 760px) {
+            :root {
+                --note-width: min(280px, 46vw);
+                --note-gap: 12px;
+            }
+
+            body {
+                padding: 14px 12px 86px;
+            }
+
+            /* 窄螢幕仍將便條紙固定在右側，主工作區持續保留其寬度 */
+            #mainWorkspace {
+                width: calc(100% - var(--note-width) - var(--note-gap));
+            }
+
+            #notePanel {
+                top: 12px;
+                right: 12px;
+                bottom: 12px;
+                left: auto;
+                width: var(--note-width);
+                height: auto;
+                max-width: calc(100vw - 24px);
+            }
+
+            .client-form {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .document-field {
+                grid-column: auto;
+            }
+
+            #requirementToggleBtn {
+                left: 12px;
+                bottom: 12px;
+                width: 48px;
+                height: 48px;
+            }
+
+            #requirementToggleBtn::after {
+                left: calc(100% + 8px);
+                font-size: 11px;
+            }
+
+            #tree-container {
+                min-height: 620px;
+                height: 72vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main id="mainWorkspace">
+        <div class="header-container">
+            <h1>空間測量完整工項架構</h1>
+            <p class="subtitle">直立互動式動態圖譜</p>
+
+            <div class="instruction">
+                💡 提示：點擊節點【收合/展開】，支援滑鼠拖曳漫遊；需求釐清啟用時，可複選最末端工項，需求問題會自動整理到右側便條紙。
+            </div>
+        </div>
+
+        <form id="clientInfoForm" class="client-form" autocomplete="off" aria-label="業主聯絡資料">
+            <div class="form-field">
+                <label for="companyName">公司名稱</label>
+                <input id="companyName" name="companyName" type="text" placeholder="無">
+            </div>
+            <div class="form-field">
+                <label for="contactPerson">聯絡人</label>
+                <input id="contactPerson" name="contactPerson" type="text" placeholder="王曉明">
+            </div>
+            <div class="form-field">
+                <label for="phoneNumber">電話號碼</label>
+                <input id="phoneNumber" name="phoneNumber" type="tel" placeholder="0900-000-123">
+            </div>
+            <div class="form-field">
+                <label for="emailAddress">電子郵件</label>
+                <input id="emailAddress" name="emailAddress" type="email" placeholder="qwe246123@gmail.com">
+            </div>
+            <fieldset class="form-field document-field" style="border:0; margin:0; padding:0;">
+                <legend class="field-title">業主提供文件</legend>
+                <div class="document-options">
+                    <label for="documentsYes"><input id="documentsYes" name="documentsProvided" type="radio" value="有">有</label>
+                    <label for="documentsNo"><input id="documentsNo" name="documentsProvided" type="radio" value="無">無</label>
+                </div>
+            </fieldset>
+        </form>
+
+        <div class="scroll-wrapper" id="scrollWrap">
+            <div id="tree-container"></div>
+        </div>
+    </main>
+
+    <!-- 需求釐清便條紙 -->
+    <aside id="notePanel" aria-live="polite">
+        <div class="note-header">
+            <div class="note-title-row">
+                <h2 class="note-title">📝 測量需求釐清</h2>
+                <span id="noteCounter" class="note-counter">已選 0 項</span>
+            </div>
+        </div>
+
+        <div id="noteBody" class="note-body">
+            <div class="note-empty">
+                尚未選擇任何末端工項。<br>
+                請在需求釐清模式下點選節點。
+            </div>
+        </div>
+
+        <div class="note-footer">
+            <button id="submitToSheetBtn" class="note-clear-btn" type="button" style="background:#0055A4; color:#fff; border-color:#003366;">確認送出表單</button>
+    	    <button id="clearSelectedBtn" class="note-clear-btn" type="button">清除全部</button>
+        </div>
+    </aside>
+
+    <button id="requirementToggleBtn" type="button" class="active"
+        data-tooltip="關閉 / 開啟測量需求釐清"
+        title="關閉 / 開啟測量需求釐清"
+        aria-label="關閉 / 開啟測量需求釐清"
+        aria-pressed="true">📝</button>
+
+    <script>
+        var dom = document.getElementById('tree-container');
+        var myChart = echarts.init(dom, null, {
+            renderer: 'canvas',
+            useDirtyRect: false
+        });
+
+        // =========================================================
+        // 需求問題資料：以唯一 ID 綁定末端節點，避免重複名稱互相誤選
+        // =========================================================
+        // 問題文字、類別與順序均依「工項確認問題統計.xlsx」工作表1逐列建立。
+        var requirementQuestionMap = {
+            "A-1-1": {
+                "name": "1. 控制點清查與佈設",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 0,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "測區內是否需要環境清潔（如雜草樹木茂盛），會影響通視或衛星訊號遮擋等問題嗎？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "佈設新點位應為：導線釘、鋼片樁、木樁或是水泥樁？"
+                    }
+                ]
+            },
+            "A-1-2": {
+                "name": "2. 靜態GPS測量",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 1,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無關於測量精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]\n高程坐標系統：橢球高、TWVD2001"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "有無必須檢測的已知控制點？\n若有：詢問是否有坐標資料能提供。"
+                    }
+                ]
+            },
+            "A-1-3": {
+                "name": "3. 導線測量(平面)",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 2,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無關於測量(導線)精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "有無必須檢測的已知控制點？\n若有：詢問是否有坐標資料能提供。"
+                    }
+                ]
+            },
+            "A-1-4": {
+                "name": "4. 水準測量(高程)",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 3,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無關於水準測量精度規範說明等文件？\n高程坐標系統：TWVD2001"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "有無必須檢測的已知高程點？\n若有：詢問是否有坐標資料能提供。"
+                    }
+                ]
+            },
+            "A-1-5": {
+                "name": "5. VRS-RTK(e-GNSS 180筆)",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 4,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無關於測量精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]\n高程坐標系統：橢球高、TWVD2001"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "有無必須檢測的已知控制點？\n若有：詢問是否有坐標資料能提供。"
+                    }
+                ]
+            },
+            "A-1-6": {
+                "name": "6. 基站式RTK",
+                "category": "A.基礎控制類",
+                "categoryCode": "A",
+                "categoryClass": "cat-a",
+                "subcategory": "A-1.控制測量",
+                "order": 5,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "這項可拿掉"
+                    }
+                ]
+            },
+            "B-1-1": {
+                "name": "1. 界樁收測",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-1.土地複丈與指定建築線",
+                "order": 6,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "測量區段的地號位置？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "測量完畢後應該交付什麼資料，如：點之記、excel界樁坐標成果表、CAD圖檔？"
+                    }
+                ]
+            },
+            "B-1-2": {
+                "name": "2. 配合鑑界及收測",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-1.土地複丈與指定建築線",
+                "order": 7,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "派遣同仁前往協助辦理鑑界及收測，那請問地政正式鑑界日期？"
+                    }
+                ]
+            },
+            "B-1-3": {
+                "name": "3. 委外複丈",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-1.土地複丈與指定建築線",
+                "order": 8,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "複丈範圍與目的界定，如：土地分割、局部界址釐清。"
+                    }
+                ]
+            },
+            "B-1-4": {
+                "name": "4. 建築線(含技師簽證)",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-1.土地複丈與指定建築線",
+                "order": 9,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "待釐清"
+                    }
+                ]
+            },
+            "B-2-1": {
+                "name": "1. 1/200 地形圖",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-2.地形測量",
+                "order": 10,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？如：排水改善等"
+                    }
+                ]
+            },
+            "B-2-2": {
+                "name": "2. 1/500 地形圖",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-2.地形測量",
+                "order": 11,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？如：排水改善等"
+                    }
+                ]
+            },
+            "B-2-3": {
+                "name": "3. 1/1000 地形圖",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-2.地形測量",
+                "order": 12,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？如：規劃設計、河川測量等"
+                    }
+                ]
+            },
+            "B-2-4": {
+                "name": "4. 調繪補測",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-2.地形測量",
+                "order": 13,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "基於哪一份CAD資料進行加測地形？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "應加測哪一類別的資訊？"
+                    }
+                ]
+            },
+            "B-2-5": {
+                "name": "5. 現況測量",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-2.地形測量",
+                "order": 14,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？"
+                    }
+                ]
+            },
+            "B-3-1": {
+                "name": "1. 河道大斷面測量",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-3.斷面測量",
+                "order": 15,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "斷面間距為多少？如：100或200公尺繪製一斷面？"
+                    }
+                ]
+            },
+            "B-3-2": {
+                "name": "2. 容積與淤積計算",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-3.斷面測量",
+                "order": 16,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無設計容積等資料\n（DWG、PDF、成果報告數值）"
+                    }
+                ]
+            },
+            "B-3-3": {
+                "name": "3. 土方數量計算",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-3.斷面測量",
+                "order": 17,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "高程基準有資料提供嗎？\n（用於計算體積量體）"
+                    }
+                ]
+            },
+            "B-3-4": {
+                "name": "4. 道路縱/橫斷面",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-3.斷面測量",
+                "order": 18,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "斷面間距為多少？如：每10或20公尺繪製一斷面？"
+                    }
+                ]
+            },
+            "B-4-1": {
+                "name": "1. 工程放樣測量",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-4.工程測量",
+                "order": 19,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "有無必須檢測的已知控制點？\n若有：詢問是否有坐標資料能提供。"
+                    },
+                    {
+                        "label": "Q3.",
+                        "text": "進場作業需要額外特別申請或連繫嗎？"
+                    },
+                    {
+                        "label": "Q4.",
+                        "text": "需要配合其他單位作業嗎？"
+                    },
+                    {
+                        "label": "Q5.",
+                        "text": "需要勞安證照人員或其他證照嗎？"
+                    }
+                ]
+            },
+            "B-4-2": {
+                "name": "2. 特殊/廠房水準測點A級",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-4.工程測量",
+                "order": 20,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "檢測目的為何？\n例如：機台放置處平整度？還是沉陷監測？"
+                    },
+                    {
+                        "label": "Q3.",
+                        "text": "進場作業需要額外特別申請或連繫嗎？"
+                    },
+                    {
+                        "label": "Q4.",
+                        "text": "需要配合其他單位作業嗎？"
+                    },
+                    {
+                        "label": "Q5.",
+                        "text": "需要勞安證照人員或其他證照嗎？"
+                    }
+                ]
+            },
+            "B-4-3": {
+                "name": "3. 傾斜測量",
+                "category": "B.土地測量類",
+                "categoryCode": "B",
+                "categoryClass": "cat-b",
+                "subcategory": "B-4.工程測量",
+                "order": 21,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    }
+                ]
+            },
+            "C-1-1": {
+                "name": "1. 單點測線繪製水底高程",
+                "category": "C.水域測量類",
+                "categoryCode": "C",
+                "categoryClass": "cat-c",
+                "subcategory": "C-1.單音束水深測量",
+                "order": 22,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "高程點標註繪製即可？還是需要繪製等高線？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "進場作業需要額外特別申請或連繫嗎？"
+                    },
+                    {
+                        "label": "Q3.",
+                        "text": "需要配合其他單位作業嗎？"
+                    },
+                    {
+                        "label": "Q4.",
+                        "text": "需要勞安證照人員或其他證照嗎？"
+                    }
+                ]
+            },
+            "C-2-1": {
+                "name": "1. 密集點描繪3D水底形狀",
+                "category": "C.水域測量類",
+                "categoryCode": "C",
+                "categoryClass": "cat-c",
+                "subcategory": "C-2.多音束水深測量",
+                "order": 23,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？如：沈船探勘"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "進場作業需要額外特別申請或連繫嗎？"
+                    },
+                    {
+                        "label": "Q3.",
+                        "text": "需要配合其他單位作業嗎？"
+                    },
+                    {
+                        "label": "Q4.",
+                        "text": "需要勞安證照人員或其他證照嗎？"
+                    }
+                ]
+            },
+            "C-3-1": {
+                "name": "1. 聲學原理獲取海床地層結構資訊",
+                "category": "C.水域測量類",
+                "categoryCode": "C",
+                "categoryClass": "cat-c",
+                "subcategory": "C-3.底質震測",
+                "order": 24,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "待釐清"
+                    }
+                ]
+            },
+            "C-4-1": {
+                "name": "1. 拖曳聲波發射器，以扇形聲波呈現的影像識別",
+                "category": "C.水域測量類",
+                "categoryCode": "C",
+                "categoryClass": "cat-c",
+                "subcategory": "C-4.側掃聲納",
+                "order": 25,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "待釐清"
+                    }
+                ]
+            },
+            "C-5-1": {
+                "name": "1. 水下攝影 / 機械手臂",
+                "category": "C.水域測量類",
+                "categoryCode": "C",
+                "categoryClass": "cat-c",
+                "subcategory": "C-5.ROV水下載具",
+                "order": 26,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "計畫重點目的為何？如：沈船探勘、輪機障礙排除等"
+                    }
+                ]
+            },
+            "D-1-1": {
+                "name": "1. 照片(.jpg) / 攝影(.mp4)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-1.UAV空拍",
+                "order": 27,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "照片/攝影的目的為何？\n有無說明文件，需要釐清具體需求是什麼"
+                    }
+                ]
+            },
+            "D-1-2": {
+                "name": "2. 正射影像(.tif)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-1.UAV空拍",
+                "order": 28,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "地面解析度（GSD = ? cm/pixel）為何？\n有無精度說明文件？"
+                    }
+                ]
+            },
+            "D-1-3": {
+                "name": "3. 3D建模(.obj、.3mx等)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-1.UAV空拍",
+                "order": 29,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "3D模型建置目的為何？\n需要考量目的性思考模型精細程度。"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "成果模型繳交格式為何？"
+                    }
+                ]
+            },
+            "D-2-1": {
+                "name": "1. 提供點雲檔(.las、.e57)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-2.空載光達",
+                "order": 30,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "是否需要額外協助濾點？"
+                    }
+                ]
+            },
+            "D-2-2": {
+                "name": "2. 繪製等高線(.dwg、.shp)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-2.空載光達",
+                "order": 31,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "等高距（一般1公尺）標註規範？"
+                    }
+                ]
+            },
+            "D-2-3": {
+                "name": "3. 地形圖繪製(.dwg)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-2.空載光達",
+                "order": 32,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "此類選取須回歸於\"B-2地形測量\"探討。"
+                    }
+                ]
+            },
+            "D-3-1": {
+                "name": "1. 提供點雲檔(.las、.e57)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-3.地面光達",
+                "order": 33,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "是否需要額外協助濾點？"
+                    }
+                ]
+            },
+            "D-3-2": {
+                "name": "2. 廠區監測",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-3.地面光達",
+                "order": 34,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "廠區監測的成果呈現為何？（例如：真圓度？垂直度監測？位移監測？）"
+                    },
+                    {
+                        "label": "Q3.",
+                        "text": "目標物的材質是否為金屬或者反射物"
+                    },
+                    {
+                        "label": "Q4.",
+                        "text": "是否有既存的已知控制點在周邊？\n有無需要額外套設計坐標？"
+                    },
+                    {
+                        "label": "Q5.",
+                        "text": "需要勞安證照人員或其他證照嗎？"
+                    }
+                ]
+            },
+            "D-3-3": {
+                "name": "3. 3D建模(.obj、BIM等)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-3.地面光達",
+                "order": 35,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "3D模型建置目的為何？需要考量目的性思考模型精細程度。"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "成果模型繳交格式為何？"
+                    }
+                ]
+            },
+            "D-3-4": {
+                "name": "4. 地形圖繪製(.dwg)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-3.地面光達",
+                "order": 36,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "此類可拿掉"
+                    }
+                ]
+            },
+            "D-4-1": {
+                "name": "1. 提供點雲檔(.las、.e57)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-4.SLAM掃描",
+                "order": 37,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "是否需要額外協助濾點？"
+                    }
+                ]
+            },
+            "D-4-2": {
+                "name": "2. 3D建模(.obj、BIM等)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-4.SLAM掃描",
+                "order": 38,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "3D模型建置目的為何？需要考量目的性思考模型精細程度。"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "成果模型繳交格式為何？"
+                    }
+                ]
+            },
+            "D-4-3": {
+                "name": "3. 地形圖繪製(.dwg)",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-4.SLAM掃描",
+                "order": 39,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "有無精度規範或測量說明文件？"
+                    },
+                    {
+                        "label": "Q2.",
+                        "text": "此類選取須回歸於\"B-2地形測量\"探討。"
+                    }
+                ]
+            },
+            "D-5-1": {
+                "name": "1. 以高頻電磁波探測地下結構，轉化影像出地下結構深度剖面圖",
+                "category": "D.數位測量類",
+                "categoryCode": "D",
+                "categoryClass": "cat-d",
+                "subcategory": "D-5.透地雷達",
+                "order": 40,
+                "questions": [
+                    {
+                        "label": "Q1.",
+                        "text": "待釐清"
+                    }
+                ]
+            }
+        };
+        // =========================================================
+        // 樹狀結構資料
+        // =========================================================
+        var treeData = {
+            "name": "空間測量工項架構",
+            "label": {
+                "backgroundColor": "#003366",
+                "color": "#ffffff",
+                "borderColor": "#003366",
+                "borderWidth": 2,
+                "padding": [12, 20],
+                "borderRadius": 6,
+                "fontSize": 18,
+                "fontWeight": "bold"
+            },
+            "itemStyle": {
+                "borderColor": "#003366",
+                "color": "#003366"
+            },
+            "symbol": "none",
+            "children": [
+                {
+                    "name": "A.基礎控制類",
+                    "label": {
+                        "backgroundColor": "#0077b6",
+                        "color": "#ffffff",
+                        "borderColor": "#0077b6",
+                        "padding": [10, 16],
+                        "borderRadius": 4,
+                        "fontSize": 16,
+                        "fontWeight": "bold"
+                    },
+                    "itemStyle": {
+                        "borderColor": "#0077b6",
+                        "color": "#0077b6"
+                    },
+                    "lineStyle": {"color": "#0077b6"},
+                    "symbol": "none",
+                    "children": [
+                        {
+                            "name": "A-1.控制測量",
+                            "itemStyle": {"borderColor": "#0077b6"},
+                            "label": {
+                                "color": "#00476b",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#0077b6",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "A-1-1", "name": "1. 控制點清查與佈設", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}},
+                                {"id": "A-1-2", "name": "2. 靜態GPS測量", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}},
+                                {"id": "A-1-3", "name": "3. 導線測量(平面控制)", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}},
+                                {"id": "A-1-4", "name": "4. 水準測量(高程控制)", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}},
+                                {"name": "5. VRS-RTK (e-GNSS 180筆)", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}},
+                                {"name": "6. 基站式RTK", "itemStyle": {"borderColor": "#0077b6"}, "label": {"color": "#333"}}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "B.土地與工程類",
+                    "label": {
+                        "backgroundColor": "#E76F51",
+                        "color": "#ffffff",
+                        "borderColor": "#E76F51",
+                        "padding": [10, 16],
+                        "borderRadius": 4,
+                        "fontSize": 16,
+                        "fontWeight": "bold"
+                    },
+                    "itemStyle": {
+                        "borderColor": "#E76F51",
+                        "color": "#E76F51"
+                    },
+                    "lineStyle": {"color": "#E76F51"},
+                    "symbol": "none",
+                    "children": [
+                        {
+                            "name": "B-1.土地複丈與指定建築線",
+                            "itemStyle": {"borderColor": "#E76F51"},
+                            "label": {
+                                "color": "#a3452d",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#E76F51",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 界樁收測", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "2. 配合鑑界及收測", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "3. 委外複丈", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "4. 建築線(含技師簽證)", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "B-2.地形測量",
+                            "itemStyle": {"borderColor": "#E76F51"},
+                            "label": {
+                                "color": "#a3452d",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#E76F51",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 1/200 地形測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "2. 1/500 地形測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "3. 1/1000 地形測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "4. 調繪補測", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "5. 現況測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "B-3.斷面測量",
+                            "itemStyle": {"borderColor": "#E76F51"},
+                            "label": {
+                                "color": "#a3452d",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#E76F51",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "B-3-1", "name": "1. 河道大斷面測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"id": "B-3-2", "name": "2. 容積與淤積計算", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"id": "B-3-3", "name": "3. 土方數量計算", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"id": "B-3-4", "name": "4. 道路縱/橫斷面", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "B-4.工程測量",
+                            "itemStyle": {"borderColor": "#E76F51"},
+                            "label": {
+                                "color": "#a3452d",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#E76F51",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "B-4-1", "name": "1. 工程放樣測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"id": "B-4-2", "name": "2. 特殊/廠房水準測點A級", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}},
+                                {"name": "3. 傾斜測量", "itemStyle": {"borderColor": "#E76F51"}, "label": {"color": "#333"}}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "C.水域測量類",
+                    "label": {
+                        "backgroundColor": "#2A9D8F",
+                        "color": "#ffffff",
+                        "borderColor": "#2A9D8F",
+                        "padding": [10, 16],
+                        "borderRadius": 4,
+                        "fontSize": 16,
+                        "fontWeight": "bold"
+                    },
+                    "itemStyle": {
+                        "borderColor": "#2A9D8F",
+                        "color": "#2A9D8F"
+                    },
+                    "lineStyle": {"color": "#2A9D8F"},
+                    "symbol": "none",
+                    "children": [
+                        {
+                            "name": "C-1.單音束水深測量",
+                            "itemStyle": {"borderColor": "#2A9D8F"},
+                            "label": {
+                                "color": "#1b6960",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#2A9D8F",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "C-1-1", "name": "1. 單點測線繪製水底高程", "itemStyle": {"borderColor": "#2A9D8F"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "C-2.多音束水深測量",
+                            "itemStyle": {"borderColor": "#2A9D8F"},
+                            "label": {
+                                "color": "#1b6960",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#2A9D8F",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "C-2-1", "name": "1. 密集點描繪3D水底形狀", "itemStyle": {"borderColor": "#2A9D8F"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "C-3.底質震測",
+                            "itemStyle": {"borderColor": "#2A9D8F"},
+                            "label": {
+                                "color": "#1b6960",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#2A9D8F",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 聲學原理獲取海床地層結構資訊", "itemStyle": {"borderColor": "#2A9D8F"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "C-4.側掃聲納",
+                            "itemStyle": {"borderColor": "#2A9D8F"},
+                            "label": {
+                                "color": "#1b6960",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#2A9D8F",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 拖曳聲波發射器，以扇形聲波呈現的影像識別", "itemStyle": {"borderColor": "#2A9D8F"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "C-5.ROV水下載具",
+                            "itemStyle": {"borderColor": "#2A9D8F"},
+                            "label": {
+                                "color": "#1b6960",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#2A9D8F",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 水下攝影/機械手臂", "itemStyle": {"borderColor": "#2A9D8F"}, "label": {"color": "#333"}}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "D.數位測量類",
+                    "label": {
+                        "backgroundColor": "#7D3C98",
+                        "color": "#ffffff",
+                        "borderColor": "#7D3C98",
+                        "padding": [10, 16],
+                        "borderRadius": 4,
+                        "fontSize": 16,
+                        "fontWeight": "bold"
+                    },
+                    "itemStyle": {
+                        "borderColor": "#7D3C98",
+                        "color": "#7D3C98"
+                    },
+                    "lineStyle": {"color": "#7D3C98"},
+                    "symbol": "none",
+                    "children": [
+                        {
+                            "name": "D-1.UAV空拍",
+                            "itemStyle": {"borderColor": "#7D3C98"},
+                            "label": {
+                                "color": "#4a215c",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#7D3C98",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"id": "D-1-1", "name": "1. 照片(jpg)/攝影(mp4)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"id": "D-1-2", "name": "2. 正射影像(tif)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"name": "3. 3D建模(obj、3mx等)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "D-2.空載光達",
+                            "itemStyle": {"borderColor": "#7D3C98"},
+                            "label": {
+                                "color": "#4a215c",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#7D3C98",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 濾點後提供點雲檔(Las、E57)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"name": "2. 繪製等高線(dwg、shp)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"name": "3. 地形圖繪製(dwg)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "D-3.地面光達",
+                            "itemStyle": {"borderColor": "#7D3C98"},
+                            "label": {
+                                "color": "#4a215c",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#7D3C98",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 提供點雲檔(Las、E57)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"id": "D-3-2", "name": "2. 廠區監測", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"id": "D-3-3", "name": "3. 3D建模(obj、BIM等)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"name": "4. 地形圖繪製(dwg)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "D-4.Slam掃描",
+                            "itemStyle": {"borderColor": "#7D3C98"},
+                            "label": {
+                                "color": "#4a215c",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#7D3C98",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 提供點雲檔(Las、E57)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"id": "D-4-2", "name": "2. 3D建模(obj、BIM等)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}},
+                                {"name": "3. 地形圖繪製(dwg)", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}}
+                            ]
+                        },
+                        {
+                            "name": "D-5.透地雷達",
+                            "itemStyle": {"borderColor": "#7D3C98"},
+                            "label": {
+                                "color": "#4a215c",
+                                "fontWeight": "bold",
+                                "backgroundColor": "#ffffff",
+                                "borderColor": "#7D3C98",
+                                "borderWidth": 1.5,
+                                "padding": [6, 12],
+                                "borderRadius": 20
+                            },
+                            "symbol": "none",
+                            "children": [
+                                {"name": "1. 以高頻電磁波探測地下結構，轉化影像出地下結構深度剖面圖", "itemStyle": {"borderColor": "#7D3C98"}, "label": {"color": "#333"}}
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+		
+		// =========================================================
+		// 串接 Google 試算表送出邏輯
+		// =========================================================
+		const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm7yp2ZSmXZx0oWb-MiUdyPMkli2rWTCybKyOQN_2TilOK0aNx2KKNcC1X8Xd-XzFCBg/exec'; // <-- 請替換為您的 GAS 網址
+
+		document.getElementById('submitToSheetBtn').addEventListener('click', async function() {
+			const submitBtn = this;
+			
+			// 收集表單欄位資料
+			const companyName = document.getElementById('companyName').value.trim();
+			const contactPerson = document.getElementById('contactPerson').value.trim();
+			const phoneNumber = document.getElementById('phoneNumber').value.trim();
+			const emailAddress = document.getElementById('emailAddress').value.trim();
+			
+			const docYes = document.getElementById('documentsYes').checked;
+			const docNo = document.getElementById('documentsNo').checked;
+			const documentsProvided = docYes ? '有' : (docNo ? '無' : '未選擇');
+
+			// 收集右側便條紙目前已勾選的測量需求工項名稱
+			const selectedTaskNames = selectedRequirementIds.map(id => {
+				const item = requirementQuestionMap[id];
+				return item ? `${item.category} > ${item.subcategory} > ${item.name}` : id;
+			});
+
+			if (selectedTaskNames.length === 0) {
+				alert('請先在樹狀圖中點選需要釐清的測量工項！');
+				return;
+			}
+
+			if (!contactPerson && !phoneNumber && !emailAddress) {
+				alert('請至少填寫聯絡人、電話或電子郵件，以便後續回覆！');
+				return;
+			}
+
+			submitBtn.disabled = true;
+			submitBtn.textContent = '傳送中...';
+
+			try {
+				const formData = new FormData();
+				formData.append('companyName', companyName);
+				formData.append('contactPerson', contactPerson);
+				formData.append('phoneNumber', phoneNumber);
+				formData.append('emailAddress', emailAddress);
+				formData.append('documentsProvided', documentsProvided);
+				formData.append('selectedRequirements', selectedTaskNames.join('；\n'));
+
+				const response = await fetch(SCRIPT_URL, {
+					method: 'POST',
+					body: formData
+				});
+
+				const result = await response.json();
+
+				if (result.status === 'success') {
+					alert('🎉 測量需求與表單資料已成功送出至 Google 試算表！');
+					// 可依需求決定是否清空或保留
+				} else {
+					throw new Error(result.message || '未知錯誤');
+				}
+			} catch (error) {
+				console.error('送出失敗:', error);
+				alert('❌ 傳送失敗，請檢查網路連線或稍後再試。');
+			} finally {
+				submitBtn.disabled = false;
+				submitBtn.textContent = '確認送出表單';
+			}
+		});
+
+        // 依 Excel 工項清單的列序，將 41 個末端節點綁定唯一 ID。
+        // 這可讓原本尚未設定需求問題 ID 的工項也能被選取，並依來源順序排序。
+        var requirementTaskIds = Object.keys(requirementQuestionMap).sort(function (a, b) {
+            return requirementQuestionMap[a].order - requirementQuestionMap[b].order;
+        });
+
+        function assignRequirementIdsByTreeOrder(root) {
+            var leafIndex = 0;
+            function visit(node) {
+                if (Array.isArray(node.children) && node.children.length > 0) {
+                    node.children.forEach(visit);
+                } else {
+                    if (requirementTaskIds[leafIndex]) {
+                        node.id = requirementTaskIds[leafIndex];
+                    }
+                    leafIndex += 1;
+                }
+            }
+            visit(root);
+            if (leafIndex !== requirementTaskIds.length) {
+                console.warn('樹狀圖末端工項數量與問題統計表不一致：', leafIndex, requirementTaskIds.length);
+            }
+        }
+        assignRequirementIdsByTreeOrder(treeData);
+
+        // =========================================================
+        // 統一各主分類子樹的連線顏色
+        // A / B / C / D 以下所有節點沿用主分類色，避免 ECharts
+        // 對沒有明確 lineStyle 的節點套用灰色預設值。
+        // =========================================================
+        function propagateBranchLineColor(node, branchColor) {
+            if (!node) return;
+
+            var currentColor = branchColor ||
+                (node.lineStyle && node.lineStyle.color) ||
+                (node.itemStyle && node.itemStyle.color) ||
+                null;
+
+            if (currentColor) {
+                node.lineStyle = Object.assign({}, node.lineStyle || {}, {
+                    color: currentColor
+                });
+            }
+
+            if (Array.isArray(node.children)) {
+                node.children.forEach(function (child) {
+                    propagateBranchLineColor(child, currentColor);
+                });
+            }
+        }
+
+        if (Array.isArray(treeData.children)) {
+            treeData.children.forEach(function (branch) {
+                var branchColor =
+                    (branch.lineStyle && branch.lineStyle.color) ||
+                    (branch.itemStyle && branch.itemStyle.color);
+                propagateBranchLineColor(branch, branchColor);
+            });
+        }
+
+        // 根節點維持中性灰，A/B/C/D 子樹則使用各自主色。
+        treeData.lineStyle = {
+            color: '#c8c8c8',
+            width: 4
+        };
+
+        // =========================================================
+        // 需求釐清：選取狀態
+        // =========================================================
+        var requirementMode = true;
+        var selectedRequirementIds = [];
+
+        var requirementToggleBtn = document.getElementById('requirementToggleBtn');
+        var notePanel = document.getElementById('notePanel');
+        var noteBody = document.getElementById('noteBody');
+        var noteCounter = document.getElementById('noteCounter');
+        var clearSelectedBtn = document.getElementById('clearSelectedBtn');
+
+        // 深拷貝節點資料，依選取狀態更新外觀
+        function cloneTreeData(obj) {
+            return JSON.parse(JSON.stringify(obj));
+        }
+
+        function decorateSelectedNodes(node) {
+            if (!node) return;
+
+            if (node.id && requirementQuestionMap[node.id]) {
+                var originalLabel = node.label || {};
+
+                if (selectedRequirementIds.indexOf(node.id) !== -1) {
+                    node.itemStyle = Object.assign({}, node.itemStyle || {}, {
+                        color: '#fff7b3',
+                        borderColor: '#d97706',
+                        borderWidth: 3
+                    });
+
+                    node.label = Object.assign({}, originalLabel, {
+                        color: '#6b4f00',
+                        backgroundColor: '#fff7b3',
+                        borderColor: '#d97706',
+                        borderWidth: 2.5,
+                        fontWeight: 'bold',
+                        shadowBlur: 8,
+                        shadowColor: 'rgba(217,119,6,0.28)'
+                    });
+                }
+            }
+
+            if (Array.isArray(node.children)) {
+                node.children.forEach(decorateSelectedNodes);
+            }
+        }
+
+        // 不再重新 setOption 整棵 tree。
+        // 這是避免「點擊需求節點後樹狀圖自動收攏」的關鍵。
+        // 需求選取狀態只由 selectedRequirementIds 管理，樹狀圖本身維持目前展開/縮合狀態。
+        // 目前選取節點的 ECharts dataIndex。
+        // 使用 ECharts 的 select / unselect state，而不是重新 setOption，
+        // 因此不會讓整棵 Tree 重新建立，也不會破壞目前的展開/收合狀態。
+        var selectedDataIndexMap = {};
+
+        function applyNodeSelection(dataIndex, isSelected) {
+            if (dataIndex === undefined || dataIndex === null) return;
+
+            myChart.dispatchAction({
+                type: isSelected ? 'select' : 'unselect',
+                seriesIndex: 0,
+                dataIndex: dataIndex
+            });
+        }
+
+        function updateChartSelectionStyle() {
+            // 需求節點的黃色樣式由 ECharts 的 select state 處理。
+            // 刻意不重新 setOption，避免樹狀圖收攏、跳動或產生 Canvas 殘影。
+        }
+
+        function renderNotePanel() {
+            var sortedIds = selectedRequirementIds
+                .filter(function (id) { return !!requirementQuestionMap[id]; })
+                .slice()
+                .sort(function (a, b) {
+                    return requirementQuestionMap[a].order - requirementQuestionMap[b].order;
+                });
+
+            noteCounter.textContent = '已選 ' + sortedIds.length + ' 項';
+
+            if (sortedIds.length === 0) {
+                noteBody.innerHTML = `
+                    <div class="note-empty">
+                        尚未選擇任何末端工項。<br>
+                        請在需求釐清模式下點選節點。
+                    </div>
+                `;
+                return;
+            }
+
+            var html = '';
+            var lastCategory = '';
+            var lastSubcategory = '';
+
+            sortedIds.forEach(function (id) {
+                var item = requirementQuestionMap[id];
+                if (!item) return;
+
+                if (item.category !== lastCategory) {
+                    html += '<div class="note-category-heading ' + escapeHtml(item.categoryClass) + '">' +
+                        escapeHtml(item.category) + '</div>';
+                    lastCategory = item.category;
+                    lastSubcategory = '';
+                }
+
+                if (item.subcategory !== lastSubcategory) {
+                    html += '<div class="note-subcategory-heading">' +
+                        escapeHtml(item.subcategory) + '</div>';
+                    lastSubcategory = item.subcategory;
+                }
+
+                html += `
+                    <section class="note-group">
+                        <div class="note-group-title">
+                            <span>${escapeHtml(item.name)}</span>
+                            <button
+                                type="button"
+                                class="remove-item-btn"
+                                data-remove-id="${escapeHtml(id)}"
+                                title="移除此工項"
+                                aria-label="移除此工項"
+                            >✕</button>
+                        </div>
+                `;
+
+                item.questions.forEach(function (question) {
+                    var textHtml = escapeHtml(question.text).replace(/\r?\n/g, '<br>');
+                    html += '<div class="note-question"><code>' + escapeHtml(question.label) +
+                        '</code> ' + textHtml + '</div>';
+                });
+
+                html += '</section>';
+            });
+
+            noteBody.innerHTML = html;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function removeRequirement(id) {
+            if (Object.prototype.hasOwnProperty.call(selectedDataIndexMap, id)) {
+                applyNodeSelection(selectedDataIndexMap[id], false);
+                delete selectedDataIndexMap[id];
+            }
+
+            selectedRequirementIds = selectedRequirementIds.filter(function (item) {
+                return item !== id;
+            });
+
+            renderNotePanel();
+            updateChartSelectionStyle();
+        }
+
+        function clearAllRequirements() {
+            selectedRequirementIds.forEach(function (id) {
+                if (Object.prototype.hasOwnProperty.call(selectedDataIndexMap, id)) {
+                    applyNodeSelection(selectedDataIndexMap[id], false);
+                }
+            });
+
+            selectedDataIndexMap = {};
+            selectedRequirementIds = [];
+            renderNotePanel();
+            updateChartSelectionStyle();
+        }
+
+        noteBody.addEventListener('click', function (event) {
+            var button = event.target.closest('.remove-item-btn');
+            if (!button) return;
+
+            var id = button.getAttribute('data-remove-id');
+            if (id) {
+                removeRequirement(id);
+            }
+        });
+
+        // 左下角方形按鈕：同步切換需求釐清模式與右側便條紙顯示狀態。
+        function setRequirementMode(enabled) {
+            requirementMode = !!enabled;
+            notePanel.classList.toggle('hidden', !requirementMode);
+            requirementToggleBtn.classList.toggle('active', requirementMode);
+            requirementToggleBtn.setAttribute('aria-pressed', String(requirementMode));
+            requirementToggleBtn.title = '關閉 / 開啟測量需求釐清';
+            requirementToggleBtn.setAttribute('data-tooltip', '關閉 / 開啟測量需求釐清');
+
+            if (requirementMode) {
+                renderNotePanel();
+            }
+        }
+
+        requirementToggleBtn.addEventListener('click', function () {
+            setRequirementMode(!requirementMode);
+        });
+
+        clearSelectedBtn.addEventListener('click', function () {
+            clearAllRequirements();
+        });
+
+        // 便條紙採固定位置與固定尺寸，不提供拖曳或縮放功能。
+
+        // =========================================================
+        // ECharts 設定
+        // =========================================================
+        var option = {
+            // 保留 Tree 展開／收攏動畫；Canvas 明確關閉 dirty-rect，避免局部重繪造成線段殘影。
+            animation: true,
+            animationDuration: 300,
+            animationDurationUpdate: 500,
+            animationEasing: 'cubicOut',
+            animationEasingUpdate: 'cubicOut',
+            stateAnimation: { duration: 120 },
+            toolbox: {
+                show: true,
+                feature: {
+                    saveAsImage: {
+                        title: '下載為圖片',
+                        name: '空間測量業務樹狀圖',
+                        pixelRatio: 2
+                    }
+                },
+                right: 30,
+                top: 20
+            },
+
+            tooltip: {
+                trigger: 'item',
+                triggerOn: 'mousemove',
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                borderColor: '#ccc',
+                textStyle: {
+                    color: '#333',
+                    fontSize: 14
+                },
+                formatter: function (info) {
+                    var selected = info.data && info.data.id &&
+                        selectedRequirementIds.indexOf(info.data.id) !== -1;
+
+                    var prefix = (requirementMode && info.data && info.data.id && requirementQuestionMap[info.data.id])
+                        ? (selected ? '✅ 已選：' : '📝 點擊加入：')
+                        : '';
+
+                    return '<b>' + prefix + escapeHtml(String(info.name).replace(/\n/g, ' ')) + '</b>';
+                }
+            },
+
+            series: [
+                {
+                    type: 'tree',
+                    data: [treeData],
+                    selectedMode: 'multiple',
+                    select: {
+                        itemStyle: {
+                            color: '#fff8a8',
+                            borderColor: '#d8c85a',
+                            borderWidth: 2.5
+                        },
+                        label: {
+                            color: '#333333'
+                        }
+                    },
+                    orient: 'TB',
+                    roam: true,
+                    initialTreeDepth: 2,
+
+                    left: '2%',
+                    right: '2%',
+                    top: '8%',
+                    bottom: '10%',
+
+                    symbol: 'emptyCircle',
+                    symbolSize: 14,
+
+                    edgeShape: 'polyline',
+                    edgeForkPosition: '60%',
+
+                    lineStyle: {
+                        width: 4,
+                        curveness: 0
+                    },
+
+                    label: {
+                        position: 'top',
+                        verticalAlign: 'middle',
+                        align: 'center',
+                        fontSize: 16,
+                        fontFamily: 'Noto Sans TC',
+                        distance: 12
+                    },
+
+                    leaves: {
+                        label: {
+                            position: 'bottom',
+                            verticalAlign: 'top',
+                            align: 'center',
+                            distance: 12,
+                            fontSize: 15,
+                            backgroundColor: '#f9f9f9',
+                            padding: [6, 10],
+                            borderRadius: 4,
+                            borderWidth: 1,
+                            borderColor: '#e0e0e0'
+                        }
+                    },
+
+                    // 保留原本的展開／收攏動畫。
+                    animation: true,
+                    animationDuration: 300,
+                    animationDurationUpdate: 500,
+                    animationEasing: 'cubicOut',
+                    animationEasingUpdate: 'cubicOut'
+                }
+            ]
+        };
+
+        myChart.setOption(option);
+        setRequirementMode(true);
+
+        // =========================================================
+        // Tree 展開／收攏後的保護性完整刷新
+        // 保留 500ms 的動畫，動畫結束後再做一次完整 renderer refresh，
+        // 清除偶發的舊線段繪製痕跡，但不改變節點的展開狀態。
+        // =========================================================
+        var treeRefreshTimer = null;
+        myChart.on('treeexpandandcollapse', function () {
+            if (treeRefreshTimer) {
+                clearTimeout(treeRefreshTimer);
+            }
+
+            treeRefreshTimer = setTimeout(function () {
+                if (myChart && !myChart.isDisposed()) {
+                    myChart.getZr().refreshImmediately();
+                }
+            }, 560);
+        });
+
+        // =========================================================
+        // 最末端節點點擊：只有在需求釐清模式下才加入 / 取消
+        // =========================================================
+        myChart.on('click', function (params) {
+            var node = params.data || {};
+            var id = node.id;
+
+            // 需求釐清模式關閉時，不讓 ECharts 的 selected state 留下任何黃色。
+            if (!requirementMode) {
+                applyNodeSelection(params.dataIndex, false);
+                return;
+            }
+
+            // 需求釐清模式開啟時，也只允許「有需求問題的最末端節點」被選取。
+            if (!id || !requirementQuestionMap[id]) {
+                applyNodeSelection(params.dataIndex, false);
+                return;
+            }
+
+            var index = selectedRequirementIds.indexOf(id);
+
+            // 保存該節點的 dataIndex，讓移除／清除時可以精準取消黃色選取狀態。
+            selectedDataIndexMap[id] = params.dataIndex;
+
+            if (index === -1) {
+                selectedRequirementIds.push(id);
+                applyNodeSelection(params.dataIndex, true);
+            } else {
+                // 再次點擊 = 取消選取
+                selectedRequirementIds.splice(index, 1);
+                applyNodeSelection(params.dataIndex, false);
+                delete selectedDataIndexMap[id];
+            }
+
+            renderNotePanel();
+            updateChartSelectionStyle();
+        });
+
+        // 視窗載入完成後，自動將卷軸移動到 3600px 畫布的最中心
+        window.onload = function () {
+            var scrollWrap = document.getElementById('scrollWrap');
+            scrollWrap.scrollLeft = (scrollWrap.scrollWidth - scrollWrap.clientWidth) / 2;
+        };
+
+        window.addEventListener('resize', function () {
+            myChart.resize();
+        });
+    </script>
+</body>
+</html>
