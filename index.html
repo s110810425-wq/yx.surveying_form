@@ -46,15 +46,9 @@
 
         h1 {
             color: #003366;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             font-weight: 700;
             letter-spacing: 1px;
-        }
-
-        p.subtitle {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 0;
         }
 
         .instruction {
@@ -68,10 +62,10 @@
             border: 1px solid #d4e6f1;
         }
 
-        /* 業主資料表單 */
+        /* 業主資料表單（含報價編號與工程編號，共 7 欄） */
         .client-form {
             display: grid;
-            grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(150px, 0.9fr);
+            grid-template-columns: repeat(5, minmax(115px, 1fr)) minmax(140px, 0.9fr);
             gap: 12px;
             width: 100%;
             margin: 14px 0 16px;
@@ -150,69 +144,6 @@
             margin: 0;
             accent-color: #0055A4;
             cursor: pointer;
-        }
-
-        /* 左下角方形切換鈕：停用／啟用需求釐清與右側便條紙 */
-        #requirementToggleBtn {
-            position: fixed;
-            z-index: 1200;
-            left: 18px;
-            bottom: 18px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 54px;
-            height: 54px;
-            padding: 0;
-            border: 1px solid #004681;
-            border-radius: 10px;
-            background: #0055A4;
-            color: #ffffff;
-            font-family: inherit;
-            font-size: 25px;
-            line-height: 1;
-            cursor: pointer;
-            box-shadow: 0 5px 16px rgba(0, 51, 102, 0.24);
-            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        #requirementToggleBtn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 51, 102, 0.28);
-        }
-
-        #requirementToggleBtn.active {
-            background: #d97706;
-            border-color: #b96500;
-        }
-
-        #requirementToggleBtn::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            left: calc(100% + 10px);
-            bottom: 50%;
-            transform: translateY(50%);
-            width: max-content;
-            max-width: 240px;
-            padding: 8px 10px;
-            border-radius: 6px;
-            background: rgba(34, 45, 58, 0.96);
-            color: #ffffff;
-            font-size: 12px;
-            font-weight: 500;
-            line-height: 1.4;
-            letter-spacing: 0;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity 0.15s ease;
-        }
-
-        #requirementToggleBtn:hover::after,
-        #requirementToggleBtn:focus-visible::after {
-            opacity: 1;
-            visibility: visible;
         }
 
         .scroll-wrapper {
@@ -540,6 +471,12 @@
             background: #fffdf0;
         }
 
+        @media (max-width: 1500px) {
+            .client-form {
+                grid-template-columns: repeat(4, minmax(130px, 1fr));
+            }
+        }
+
         @media (max-width: 1200px) {
             :root {
                 --note-width: 320px;
@@ -568,7 +505,7 @@
             }
 
             body {
-                padding: 14px 12px 86px;
+                padding: 14px 12px 28px;
             }
 
             /* 窄螢幕仍將便條紙固定在右側，主工作區持續保留其寬度 */
@@ -596,18 +533,6 @@
                 grid-column: auto;
             }
 
-            #requirementToggleBtn {
-                left: 12px;
-                bottom: 12px;
-                width: 48px;
-                height: 48px;
-            }
-
-            #requirementToggleBtn::after {
-                left: calc(100% + 8px);
-                font-size: 11px;
-            }
-
             #tree-container {
                 min-height: 620px;
                 height: 72vh;
@@ -620,14 +545,17 @@
     <main id="mainWorkspace">
         <div class="header-container">
             <h1>空間測量完整工項架構</h1>
-            <p class="subtitle">直立互動式動態圖譜</p>
 
             <div class="instruction">
-                💡 提示：點擊節點【收合/展開】，支援滑鼠拖曳漫遊；需求釐清啟用時，可複選最末端工項，並可在右側便條紙逐題填寫業主回覆。
+                💡 提示：點擊節點【收合/展開】，支援滑鼠拖曳漫遊；可複選最末端工項，並可在右側便條紙逐題填寫業主回覆。
             </div>
         </div>
 
         <form id="clientInfoForm" class="client-form" autocomplete="off" aria-label="業主聯絡資料">
+            <div class="form-field">
+                <label for="quoteNumber">報價編號</label>
+                <input id="quoteNumber" name="quoteNumber" type="text" placeholder="如：115315">
+            </div>
             <div class="form-field">
                 <label for="companyName">公司名稱</label>
                 <input id="companyName" name="companyName" type="text" placeholder="無">
@@ -670,7 +598,7 @@
         <div id="noteBody" class="note-body">
             <div class="note-empty">
                 尚未選擇任何末端工項。<br>
-                請在需求釐清模式下點選節點。
+                請在樹狀圖中點選末端節點。
             </div>
         </div>
 
@@ -679,12 +607,6 @@
     	    <button id="clearSelectedBtn" class="note-clear-btn" type="button">清除全部</button>
         </div>
     </aside>
-
-    <button id="requirementToggleBtn" type="button" class="active"
-        data-tooltip="關閉 / 開啟測量需求釐清"
-        title="關閉 / 開啟測量需求釐清"
-        aria-label="關閉 / 開啟測量需求釐清"
-        aria-pressed="true">📝</button>
 
     <script>
 		var dom = document.getElementById('tree-container');
@@ -1410,6 +1332,7 @@
                 ]
             }
         };
+
         // =========================================================
         // 樹狀結構資料
         // =========================================================
@@ -1804,6 +1727,7 @@
         document.getElementById('submitToSheetBtn').addEventListener('click', async function() {
             const submitBtn = this;
 
+            const quoteNumber = document.getElementById('quoteNumber').value.trim() || '無';
             const companyName = document.getElementById('companyName').value.trim();
             const contactPerson = document.getElementById('contactPerson').value.trim();
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
@@ -1857,6 +1781,7 @@
             try {
                 // 使用 URLSearchParams 送出 application/x-www-form-urlencoded，讓 Apps Script 的 e.parameter 可穩定讀取。
                 const formData = new URLSearchParams();
+                formData.append('quoteNumber', quoteNumber);
                 formData.append('companyName', companyName);
                 formData.append('contactPerson', contactPerson);
                 formData.append('phoneNumber', phoneNumber);
@@ -1890,7 +1815,6 @@
         });
 
         // 依 Excel 工項清單的列序，將 41 個末端節點綁定唯一 ID。
-        // 這可讓原本尚未設定需求問題 ID 的工項也能被選取，並依來源順序排序。
         var requirementTaskIds = Object.keys(requirementQuestionMap).sort(function (a, b) {
             return requirementQuestionMap[a].order - requirementQuestionMap[b].order;
         });
@@ -1916,8 +1840,6 @@
 
         // =========================================================
         // 統一各主分類子樹的連線顏色
-        // A / B / C / D 以下所有節點沿用主分類色，避免 ECharts
-        // 對沒有明確 lineStyle 的節點套用灰色預設值。
         // =========================================================
         function propagateBranchLineColor(node, branchColor) {
             if (!node) return;
@@ -1949,18 +1871,16 @@
             });
         }
 
-        // 根節點維持中性灰，A/B/C/D 子樹則使用各自主色。
         treeData.lineStyle = {
             color: '#c8c8c8',
             width: 4
         };
 
         // =========================================================
-        // 需求釐清：選取狀態
+        // 需求釐清：選取狀態（常駐開啟）
         // =========================================================
         var requirementMode = true;
         var selectedRequirementIds = [];
-        // 回覆與鎖定狀態均以「工項 ID + 題目序號」儲存；切換工項重繪便條紙時不會遺失。
         var requirementAnswers = {};
         var requirementAnswerLocks = {};
 
@@ -1968,53 +1888,11 @@
             return String(id) + '__Q' + String(questionIndex + 1);
         }
 
-        var requirementToggleBtn = document.getElementById('requirementToggleBtn');
         var notePanel = document.getElementById('notePanel');
         var noteBody = document.getElementById('noteBody');
         var noteCounter = document.getElementById('noteCounter');
         var clearSelectedBtn = document.getElementById('clearSelectedBtn');
 
-        // 深拷貝節點資料，依選取狀態更新外觀
-        function cloneTreeData(obj) {
-            return JSON.parse(JSON.stringify(obj));
-        }
-
-        function decorateSelectedNodes(node) {
-            if (!node) return;
-
-            if (node.id && requirementQuestionMap[node.id]) {
-                var originalLabel = node.label || {};
-
-                if (selectedRequirementIds.indexOf(node.id) !== -1) {
-                    node.itemStyle = Object.assign({}, node.itemStyle || {}, {
-                        color: '#fff7b3',
-                        borderColor: '#d97706',
-                        borderWidth: 3
-                    });
-
-                    node.label = Object.assign({}, originalLabel, {
-                        color: '#6b4f00',
-                        backgroundColor: '#fff7b3',
-                        borderColor: '#d97706',
-                        borderWidth: 2.5,
-                        fontWeight: 'bold',
-                        shadowBlur: 8,
-                        shadowColor: 'rgba(217,119,6,0.28)'
-                    });
-                }
-            }
-
-            if (Array.isArray(node.children)) {
-                node.children.forEach(decorateSelectedNodes);
-            }
-        }
-
-        // 不再重新 setOption 整棵 tree。
-        // 這是避免「點擊需求節點後樹狀圖自動收攏」的關鍵。
-        // 需求選取狀態只由 selectedRequirementIds 管理，樹狀圖本身維持目前展開/縮合狀態。
-        // 目前選取節點的 ECharts dataIndex。
-        // 使用 ECharts 的 select / unselect state，而不是重新 setOption，
-        // 因此不會讓整棵 Tree 重新建立，也不會破壞目前的展開/收合狀態。
         var selectedDataIndexMap = {};
 
         function applyNodeSelection(dataIndex, isSelected) {
@@ -2029,7 +1907,6 @@
 
         function updateChartSelectionStyle() {
             // 需求節點的黃色樣式由 ECharts 的 select state 處理。
-            // 刻意不重新 setOption，避免樹狀圖收攏、跳動或產生 Canvas 殘影。
         }
 
         function renderNotePanel() {
@@ -2046,7 +1923,7 @@
                 noteBody.innerHTML = `
                     <div class="note-empty">
                         尚未選擇任何末端工項。<br>
-                        請在需求釐清模式下點選節點。
+                        請在樹狀圖中點選末端節點。
                     </div>
                 `;
                 return;
@@ -2179,7 +2056,6 @@
             updateChartSelectionStyle();
         }
 
-        // 使用事件委派即時保存每一題的輸入，避免新增／移除工項導致便條紙重繪時清空內容。
         noteBody.addEventListener('input', function (event) {
             var textarea = event.target.closest('.note-answer-input');
             if (!textarea) return;
@@ -2218,35 +2094,23 @@
             }
         });
 
-        // 左下角方形按鈕：同步切換需求釐清模式與右側便條紙顯示狀態。
         function setRequirementMode(enabled) {
             requirementMode = !!enabled;
             notePanel.classList.toggle('hidden', !requirementMode);
-            requirementToggleBtn.classList.toggle('active', requirementMode);
-            requirementToggleBtn.setAttribute('aria-pressed', String(requirementMode));
-            requirementToggleBtn.title = '關閉 / 開啟測量需求釐清';
-            requirementToggleBtn.setAttribute('data-tooltip', '關閉 / 開啟測量需求釐清');
 
             if (requirementMode) {
                 renderNotePanel();
             }
         }
 
-        requirementToggleBtn.addEventListener('click', function () {
-            setRequirementMode(!requirementMode);
-        });
-
         clearSelectedBtn.addEventListener('click', function () {
             clearAllRequirements();
         });
-
-        // 便條紙採固定位置與固定尺寸，不提供拖曳或縮放功能。
 
         // =========================================================
         // ECharts 設定
         // =========================================================
         var option = {
-            // 保留 Tree 展開／收攏動畫；Canvas 明確關閉 dirty-rect，避免局部重繪造成線段殘影。
             animation: true,
             animationDuration: 300,
             animationDurationUpdate: 500,
@@ -2346,7 +2210,6 @@
                         }
                     },
 
-                    // 保留原本的展開／收攏動畫。
                     animation: true,
                     animationDuration: 300,
                     animationDurationUpdate: 500,
@@ -2361,8 +2224,6 @@
 
         // =========================================================
         // Tree 展開／收攏後的保護性完整刷新
-        // 保留 500ms 的動畫，動畫結束後再做一次完整 renderer refresh，
-        // 清除偶發的舊線段繪製痕跡，但不改變節點的展開狀態。
         // =========================================================
         var treeRefreshTimer = null;
         myChart.on('treeexpandandcollapse', function () {
@@ -2378,19 +2239,17 @@
         });
 
         // =========================================================
-        // 最末端節點點擊：只有在需求釐清模式下才加入 / 取消
+        // 最末端節點點擊：加入 / 取消需求釐清
         // =========================================================
         myChart.on('click', function (params) {
             var node = params.data || {};
             var id = node.id;
 
-            // 需求釐清模式關閉時，不讓 ECharts 的 selected state 留下任何黃色。
             if (!requirementMode) {
                 applyNodeSelection(params.dataIndex, false);
                 return;
             }
 
-            // 需求釐清模式開啟時，也只允許「有需求問題的最末端節點」被選取。
             if (!id || !requirementQuestionMap[id]) {
                 applyNodeSelection(params.dataIndex, false);
                 return;
@@ -2398,14 +2257,12 @@
 
             var index = selectedRequirementIds.indexOf(id);
 
-            // 保存該節點的 dataIndex，讓移除／清除時可以精準取消黃色選取狀態。
             selectedDataIndexMap[id] = params.dataIndex;
 
             if (index === -1) {
                 selectedRequirementIds.push(id);
                 applyNodeSelection(params.dataIndex, true);
             } else {
-                // 再次點擊 = 取消選取
                 selectedRequirementIds.splice(index, 1);
                 applyNodeSelection(params.dataIndex, false);
                 delete selectedDataIndexMap[id];
