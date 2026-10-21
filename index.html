@@ -345,6 +345,64 @@
             color: #7b5b00;
         }
 
+        /* 快選按鈕群組樣式 */
+        .note-quick-groups {
+            margin: 8px 0 6px 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .note-quick-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .note-quick-group-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #594f00;
+        }
+
+        .note-quick-btn-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .note-quick-btn {
+            padding: 4px 10px;
+            border: 1px solid #c4b440;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.85);
+            color: #4a4300;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .note-quick-btn:hover:not(:disabled) {
+            background: #ffffff;
+            border-color: #0055A4;
+            color: #0055A4;
+        }
+
+        .note-quick-btn.is-active {
+            background: #0055A4;
+            color: #ffffff;
+            border-color: #003366;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0, 85, 164, 0.2);
+        }
+
+        .note-quick-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         /* 每道需求問題下方的業主文字回覆欄位 */
         .note-question-block {
             margin: 10px 0 14px;
@@ -638,8 +696,8 @@
                         "text": "佈設新點位應為：導線釘、鋼片樁、木樁或是水泥樁？"
                     }
                 ]
-            },
-            "A-1-2": {
+            },			
+			"A-1-2": {
                 "name": "2. 靜態GPS測量",
                 "category": "A.基礎控制類",
                 "categoryCode": "A",
@@ -649,7 +707,27 @@
                 "questions": [
                     {
                         "label": "Q1.",
-                        "text": "有無關於測量精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]\n高程坐標系統：橢球高、TWVD2001"
+                        "text": "有無關於測量精度規範說明等文件？",
+                        "quickGroups": [
+                            {
+                                "key": "doc",
+                                "label": "精度規範說明文件",
+                                "prefix": "精度規範說明文件：",
+                                "options": ["有", "無"]
+                            },
+                            {
+                                "key": "planar",
+                                "label": "平面坐標系統",
+                                "prefix": "平面坐標系統：",
+                                "options": ["TWD97[1997]", "TWD97[2010]", "TWD97[2020]", "其他"]
+                            },
+                            {
+                                "key": "vertical",
+                                "label": "高程坐標系統",
+                                "prefix": "高程坐標系統：",
+                                "options": ["橢球高(h)", "TWVD2001(H)", "其他"]
+                            }
+                        ]
                     },
                     {
                         "label": "Q2.",
@@ -667,7 +745,31 @@
                 "questions": [
                     {
                         "label": "Q1.",
-                        "text": "有無關於測量(導線)精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]"
+                        "text": "有無關於測量(導線)精度規範說明等文件？",
+                        "quickGroups": [
+                            {
+                                "key": "doc",
+                                "label": "精度規範說明文件",
+                                "prefix": "精度規範說明文件：",
+                                "options": ["有", "無"]
+                            },
+                            {
+                                "key": "closure",
+                                "label": "導線閉合比",
+                                "prefix": "導線閉合比(P)：",
+                                "options": ["導線閉合比(P)：1/?"],
+                                "outputMap": {
+                                    "導線閉合比(P)：1/?": "導線閉合比(P)：1/?"
+                                },
+                                "preserveEditedPrefix": true
+                            },
+                            {
+                                "key": "planar",
+                                "label": "平面坐標系統",
+                                "prefix": "平面坐標系統：",
+                                "options": ["TWD97[1997]", "TWD97[2010]", "TWD97[2020]", "其他"]
+                            }
+                        ]
                     },
                     {
                         "label": "Q2.",
@@ -685,7 +787,31 @@
                 "questions": [
                     {
                         "label": "Q1.",
-                        "text": "有無關於水準測量精度規範說明等文件？\n高程坐標系統：TWVD2001"
+                        "text": "有無關於水準測量精度規範說明等文件？",
+                        "quickGroups": [
+                            {
+                                "key": "doc",
+                                "label": "精度規範說明文件",
+                                "prefix": "精度規範說明文件：",
+                                "options": ["有", "無"]
+                            },
+                            {
+                                "key": "closure",
+                                "label": "高程閉合差",
+                                "prefix": "高程閉合差：",
+                                "options": ["<±?mm√K"],
+                                "outputMap": {
+                                    "<±?mm√K": "高程閉合差：±?mm√K"
+                                },
+                                "preserveEditedPrefix": true
+                            },
+                            {
+                                "key": "vertical",
+                                "label": "高程坐標系統",
+                                "prefix": "高程坐標系統：",
+                                "options": ["橢球高(h)", "TWVD2001(H)", "其他"]
+                            }
+                        ]
                     },
                     {
                         "label": "Q2.",
@@ -703,7 +829,27 @@
                 "questions": [
                     {
                         "label": "Q1.",
-                        "text": "有無關於測量精度規範說明等文件？\n平面坐標系統：TWD97[1997 / 2010 / 2020]\n高程坐標系統：橢球高、TWVD2001"
+                        "text": "有無關於測量精度規範說明等文件？",
+                        "quickGroups": [
+                            {
+                                "key": "doc",
+                                "label": "精度規範說明文件",
+                                "prefix": "精度規範說明文件：",
+                                "options": ["有", "無"]
+                            },
+                            {
+                                "key": "planar",
+                                "label": "平面坐標系統",
+                                "prefix": "平面坐標系統：",
+                                "options": ["TWD97[1997]", "TWD97[2010]", "TWD97[2020]", "其他"]
+                            },
+                            {
+                                "key": "vertical",
+                                "label": "高程坐標系統",
+                                "prefix": "高程坐標系統：",
+                                "options": ["橢球高(h)", "TWVD2001(H)", "其他"]
+                            }
+                        ]
                     },
                     {
                         "label": "Q2.",
@@ -1883,6 +2029,7 @@
         var selectedRequirementIds = [];
         var requirementAnswers = {};
         var requirementAnswerLocks = {};
+        var requirementQuickSelections = {}; // 記錄各題快選按鈕的選取狀態
 
         function getRequirementAnswerKey(id, questionIndex) {
             return String(id) + '__Q' + String(questionIndex + 1);
@@ -1973,16 +2120,50 @@
                     var textareaClass = isLocked ? 'note-answer-input is-locked' : 'note-answer-input';
                     var lockButtonText = isLocked ? '🔓 解除鎖定' : '🔒 鎖定內容';
                     var lockStatusText = isLocked ? '已鎖定，避免誤改' : '尚未鎖定';
+
+                    // 若該題目配置有 quickGroups，動態生成快選按鈕區塊
+                    var quickGroupsHtml = '';
+                    if (Array.isArray(question.quickGroups) && question.quickGroups.length > 0) {
+                        var currentSelections = requirementQuickSelections[answerKey] || {};
+                        quickGroupsHtml += '<div class="note-quick-groups">';
+                        question.quickGroups.forEach(function (group) {
+                            quickGroupsHtml += '<div class="note-quick-group">';
+                            if (group.label) {
+                                quickGroupsHtml += '<span class="note-quick-group-title">' + escapeHtml(group.label) + '：</span>';
+                            }
+                            quickGroupsHtml += '<div class="note-quick-btn-list">';
+                            (group.options || []).forEach(function (opt) {
+                                var isSelected = currentSelections[group.key] === opt;
+                                var btnClass = isSelected ? 'note-quick-btn is-active' : 'note-quick-btn';
+                                quickGroupsHtml += `
+                                    <button
+                                        type="button"
+                                        class="${btnClass}"
+                                        data-quick-answer-key="${escapeHtml(answerKey)}"
+                                        data-quick-task-id="${escapeHtml(id)}"
+                                        data-quick-question-index="${questionIndex}"
+                                        data-quick-group-key="${escapeHtml(group.key)}"
+                                        data-quick-value="${escapeHtml(opt)}"
+                                        ${isLocked ? 'disabled' : ''}
+                                    >${escapeHtml(opt)}</button>
+                                `;
+                            });
+                            quickGroupsHtml += '</div></div>';
+                        });
+                        quickGroupsHtml += '</div>';
+                    }
+
                     html += `
                         <div class="note-question-block">
                             <div class="note-question"><code>${escapeHtml(question.label)}</code> ${textHtml}</div>
+                            ${quickGroupsHtml}
                             <label class="note-answer-label" for="answer-${escapeHtml(answerKey)}">業主回覆</label>
                             <textarea
                                 id="answer-${escapeHtml(answerKey)}"
                                 class="${textareaClass}"
                                 data-answer-key="${escapeHtml(answerKey)}"
-                                rows="2"
-                                placeholder="請輸入業主回覆（可留白）"
+                                rows="3"
+                                placeholder="請點選上方按鈕或直接輸入業主回覆（可留白）"
                                 aria-label="${escapeHtml(question.label)} 業主回覆"
                                 ${isLocked ? 'readonly aria-readonly="true"' : ''}
                             >${escapeHtml(savedAnswer)}</textarea>
@@ -2052,6 +2233,7 @@
             selectedRequirementIds = [];
             requirementAnswers = {};
             requirementAnswerLocks = {};
+            requirementQuickSelections = {}; // 同步重置快選按鈕狀態
             renderNotePanel();
             updateChartSelectionStyle();
         }
@@ -2067,24 +2249,97 @@
         });
 
         noteBody.addEventListener('click', function (event) {
-            var lockButton = event.target.closest('.note-answer-lock-btn');
-            if (lockButton) {
-                var answerKey = lockButton.getAttribute('data-lock-answer-key');
-                if (!answerKey) return;
+            // 1. 處理快選按鈕點擊事件
+            var quickBtn = event.target.closest('.note-quick-btn');
+            if (quickBtn) {
+                var answerKey = quickBtn.getAttribute('data-quick-answer-key');
+                var taskId = quickBtn.getAttribute('data-quick-task-id');
+                var qIdx = parseInt(quickBtn.getAttribute('data-quick-question-index'), 10);
+                var groupKey = quickBtn.getAttribute('data-quick-group-key');
+                var val = quickBtn.getAttribute('data-quick-value');
 
-                if (requirementAnswerLocks[answerKey]) {
-                    if (!window.confirm('此回答目前已鎖定。確定要解除鎖定並允許編輯嗎？')) {
-                        return;
-                    }
-                    requirementAnswerLocks[answerKey] = false;
+                // 若已鎖定則不允許變更
+                if (!answerKey || requirementAnswerLocks[answerKey]) return;
+
+                if (!requirementQuickSelections[answerKey]) {
+                    requirementQuickSelections[answerKey] = {};
+                }
+
+                // 再次點擊同一按鈕可取消選取，否則切換為新選項
+                if (requirementQuickSelections[answerKey][groupKey] === val) {
+                    delete requirementQuickSelections[answerKey][groupKey];
                 } else {
-                    requirementAnswerLocks[answerKey] = true;
+                    requirementQuickSelections[answerKey][groupKey] = val;
+                }
+
+                // 依據各群組選取狀態，自動組合回傳至 Google Sheet 的文字
+                var item = requirementQuestionMap[taskId];
+                var question = item && item.questions && item.questions[qIdx];
+                if (question && Array.isArray(question.quickGroups)) {
+                    var prefixes = question.quickGroups.map(function (g) { return g.prefix; });
+                    var existingText = requirementAnswers[answerKey] || '';
+                    
+                    // 保留使用者手動輸入的非自動前綴備註行
+                    var customLines = existingText.split(/\r?\n/).filter(function (line) {
+                        var trimmed = line.trim();
+                        if (!trimmed) return false;
+                        return !prefixes.some(function (prefix) {
+                            return trimmed.indexOf(prefix) === 0;
+                        });
+                    });
+
+					// 組合按鈕產生的文字（支援自訂輸出映射 outputMap，並保留「其他」或「含 ? 範本」已手動填寫的內容）
+                    var existingLines = existingText.split(/\r?\n/);
+                    var generatedLines = [];
+                    question.quickGroups.forEach(function (g) {
+                        var selectedVal = requirementQuickSelections[answerKey][g.key];
+                        if (selectedVal) {
+                            var existingPrefixLine = (g.key !== groupKey) && existingLines.find(function (line) {
+                                return line.trim().indexOf(g.prefix) === 0;
+                            });
+
+                            if (selectedVal === '其他') {
+                                // 點選「其他」時僅顯示前綴，若先前已手動填寫則保留該行文字
+                                generatedLines.push(existingPrefixLine ? existingPrefixLine.trim() : g.prefix);
+                            } else if (g.preserveEditedPrefix && existingPrefixLine) {
+                                // 若為閉合比/閉合差等帶有 ? 的範本，且使用者已修改過該行數值，切換其他群組按鈕時保留使用者填寫的數值
+                                generatedLines.push(existingPrefixLine.trim());
+                            } else if (g.outputMap && g.outputMap[selectedVal]) {
+                                // 若有設定按鈕顯示與實際輸出文字的映射（例如按鈕顯示 <±?mm√K，輸出 高程閉合差：±?mm√K）
+                                generatedLines.push(g.outputMap[selectedVal]);
+                            } else {
+                                generatedLines.push(g.prefix + selectedVal);
+                            }
+                        }
+                    });
+
+                    requirementAnswers[answerKey] = generatedLines.concat(customLines).join('\n');
                 }
 
                 renderNotePanel();
                 return;
             }
 
+            // 2. 處理鎖定按鈕點擊事件
+            var lockButton = event.target.closest('.note-answer-lock-btn');
+            if (lockButton) {
+                var lockAnswerKey = lockButton.getAttribute('data-lock-answer-key');
+                if (!lockAnswerKey) return;
+
+                if (requirementAnswerLocks[lockAnswerKey]) {
+                    if (!window.confirm('此回答目前已鎖定。確定要解除鎖定並允許編輯嗎？')) {
+                        return;
+                    }
+                    requirementAnswerLocks[lockAnswerKey] = false;
+                } else {
+                    requirementAnswerLocks[lockAnswerKey] = true;
+                }
+
+                renderNotePanel();
+                return;
+            }
+
+            // 3. 處理移除工項按鈕點擊事件
             var removeButton = event.target.closest('.remove-item-btn');
             if (!removeButton) return;
 
