@@ -610,9 +610,13 @@
         </div>
 
         <form id="clientInfoForm" class="client-form" autocomplete="off" aria-label="業主聯絡資料">
-            <div class="form-field">
-                <label for="quoteNumber">報價編號</label>
-                <input id="quoteNumber" name="quoteNumber" type="text" placeholder="如：115315">
+		
+			<div class="form-field">
+                <label for="quoteNumber">
+                    報價編號
+                    <span id="quoteLookupStatus" style="font-weight:400; font-size:12px; margin-left:6px; color:#0055A4;"></span>
+                </label>
+                <input id="quoteNumber" name="quoteNumber" type="text" placeholder="如：115002（輸入後按Enter自動帶入）">
             </div>
             <div class="form-field">
                 <label for="companyName">公司名稱</label>
@@ -2536,6 +2540,216 @@
         window.addEventListener('resize', function () {
             myChart.resize();
         });
+
+        // =========================================================
+        // 免 Apps Script：直接從 Google Sheet「115年專案總表」讀取客戶資料
+        // =========================================================
+        const SOURCE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1PawBRr97YCqYfzEhiGLISVJoJrThiQN4j_KpMItW_Wk/edit?gid=0#gid=0';
+        const SOURCE_SHEET_NAME = '115年專案總表';
+
+        // 快取從試算表載入的索引資料（Key: 正規化後的報價編號）
+        let projectQuoteCache = null;
+        let isFetchingSheetData = null;
+
+        // 從共用網址擷取試算表 ID
+        function extractSpreadsheetId(url) {
+            const match = String(url || '').match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            return match ? match[1] : '';
+        }
+
+        // 正規化報價編號（移除 "報編"、空白與千分位逗號，例如將 "報編115,739" 統一轉為 "115739"）
+        function normalizeQuoteKey(raw) {
+            return String(raw || '').trim().replace(/^報編\s*/i, '').replace(/,/g, '');
+        }
+
+        // 從含有姓名的字串（或錯置欄位）中萃取出純淨的 Email
+        function extractCleanEmail(aoText, anText) {
+            const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+            const matchAO = String(aoText || '').match(emailRegex);
+            if (matchAO) return matchAO[0];
+            const matchAN = String(anText || '').match(emailRegex);
+            if (matchAN) return matchAN[0];
+            return String(aoText || '').trim();
+        }
+
+        // 合併公司電話(AK欄)與手機(AL欄)
+        function formatContactPhone(officePhone, mobilePhone) {
+            const office = String(officePhone || '').trim();
+            const mobile = String(mobilePhone || '').trim();
+            if (mobile && office) return `${mobile} / ${office}`;
+            return mobile || office || '';
+        }
+
+        // 透過 JSONP 載入 Google Visualization API 資料（免 Apps Script、不受本機 file:// CORS 限制）
+        function loadProjectSheetCache() {
+            if (projectQuoteCache) {
+                return Promise.resolve(projectQuoteCache);
+            }
+            if (isFetchingSheetData) {
+                return isFetchingSheetData;
+            }
+
+            const sheetId = extractSpreadsheetId(SOURCE_SHEET_URL);
+            if (!sheetId) {
+                return Promise.reject(new Error('尚未設定有效的 Google Sheet 網址'));
+            }
+
+            isFetchingSheetData = new Promise((resolve, reject) => {
+                const callbackName = '__gvizQuoteCallback_' + Date.now();
+                const script = document.createElement('script');
+
+                // 只精準選取需要的 8 個欄位：A(報編), B(工程編號), I(行號單位), AJ(連絡人), AK(公司電話), AL(手機), AN(住址-防錯位備援), AO(E-mail)
+                const tq = 'SELECT A, B, I, AJ, AK, AL, AN, AO';
+                const src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&sheet=${encodeURIComponent(SOURCE_SHEET_NAME)}&tq=${encodeURIComponent(tq)}`;
+
+                const timeoutId = setTimeout(() => {
+                    cleanup();
+                    isFetchingSheetData = null;
+                    reject(new Error('讀取試算表逾時，請確認試算表共用權限已設為「知道連結的任何人可檢視」'));
+                }, 10000);
+
+                function cleanup() {
+                    clearTimeout(timeoutId);
+                    delete window[callbackName];
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                }
+
+                window[callbackName] = function (response) {
+                    cleanup();
+                    isFetchingSheetData = null;
+
+                    if (!response || response.status === 'error' || !response.table) {
+                        reject(new Error('無法解析試算表資料'));
+                        return;
+                    }
+
+                    const map = {};
+                    const rows = response.table.rows || [];
+
+                    rows.forEach(row => {
+                        const c = row.c || [];
+                        // 優先取原始值 v 避免數字被加上千分位逗號，若字串欄位有格式化則輔以 f
+                        const getRawVal = (idx) => (c[idx] && c[idx].v !== null && c[idx].v !== undefined)
+                            ? String(c[idx].v).trim()
+                            : '';
+                        const getDisplayVal = (idx) => (c[idx] && c[idx].v !== null && c[idx].v !== undefined)
+                            ? String(c[idx].f || c[idx].v).trim()
+                            : '';
+
+                        const colA = getRawVal(0);     // A欄：報價編號 (如 115739)
+                        const colB = getDisplayVal(1); // B欄：工程編號 (如 報編115739)
+                        const key = normalizeQuoteKey(colA || colB);
+
+                        if (!key || key === '工程編號') return;
+
+                        const record = {
+                            companyName: getDisplayVal(2) || '無',                             // I欄：行號單位
+                            contactPerson: getDisplayVal(3),                                   // AJ欄：連絡人
+                            phoneNumber: formatContactPhone(getDisplayVal(4), getDisplayVal(5)),// AK欄：公司電話 + AL欄：手機
+                            emailAddress: extractCleanEmail(getDisplayVal(7), getDisplayVal(6)) // AO欄：E-mail (含 AN欄錯位自動救援)
+                        };
+
+                        map[key] = record;
+                        if (colB) {
+                            map[normalizeQuoteKey(colB)] = record;
+                            map[colB.trim()] = record;
+                        }
+                    });
+
+                    projectQuoteCache = map;
+                    resolve(map);
+                };
+
+                script.onerror = function () {
+                    cleanup();
+                    isFetchingSheetData = null;
+                    reject(new Error('網路連線失敗或試算表未開放檢視權限'));
+                };
+
+                script.src = src;
+                document.head.appendChild(script);
+            });
+
+            return isFetchingSheetData;
+        }
+
+        // 根據輸入的報價編號查詢並自動填入表單
+        async function autoFillClientInfoByQuote() {
+            const quoteInput = document.getElementById('quoteNumber');
+            const statusSpan = document.getElementById('quoteLookupStatus');
+            const rawInput = quoteInput.value.trim();
+            const lookupKey = normalizeQuoteKey(rawInput);
+
+            if (!lookupKey) {
+                if (statusSpan) statusSpan.textContent = '';
+                return;
+            }
+
+            if (statusSpan) {
+                statusSpan.style.color = '#0055A4';
+                statusSpan.textContent = '⏳ 查詢中...';
+            }
+
+            try {
+                const cache = await loadProjectSheetCache();
+                const matched = cache[lookupKey] || cache[rawInput];
+
+                if (matched) {
+                    document.getElementById('companyName').value = matched.companyName;
+                    document.getElementById('contactPerson').value = matched.contactPerson;
+                    document.getElementById('phoneNumber').value = matched.phoneNumber;
+                    document.getElementById('emailAddress').value = matched.emailAddress;
+
+                    if (statusSpan) {
+                        statusSpan.style.color = '#1b6960';
+                        statusSpan.textContent = '✅ 已帶入';
+                    }
+                } else {
+                    if (statusSpan) {
+                        statusSpan.style.color = '#d96549';
+                        statusSpan.textContent = '⚠️ 查無此編號';
+                    }
+                }
+            } catch (err) {
+                console.error('讀取 Google Sheet 失敗:', err);
+                if (statusSpan) {
+                    statusSpan.style.color = '#b42318';
+                    statusSpan.textContent = '❌ 讀取失敗(請確認共用權限)';
+                }
+            }
+        }
+
+        // 攔截表單預設的 Enter 送出重新整理行為
+        document.getElementById('clientInfoForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            autoFillClientInfoByQuote();
+        });
+
+        const quoteNumberInputEl = document.getElementById('quoteNumber');
+
+        // 1. 在報價編號欄按下 Enter 鍵時立即查詢
+        quoteNumberInputEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                autoFillClientInfoByQuote();
+            }
+        });
+
+        // 2. 當輸入滿 6 碼數字（如 115739）時，免按 Enter 直接自動帶入
+        quoteNumberInputEl.addEventListener('input', function () {
+            const cleanKey = normalizeQuoteKey(this.value);
+            if (cleanKey.length >= 6) {
+                autoFillClientInfoByQuote();
+            }
+        });
+
+        // 3. 離開輸入框時也觸發查詢
+        quoteNumberInputEl.addEventListener('change', autoFillClientInfoByQuote);
+
+        // 網頁開啟時預先在背景載入試算表快取，讓後續輸入達到 0 秒瞬間反應
+        loadProjectSheetCache().catch(() => {});
     </script>
 </body>
 </html>
